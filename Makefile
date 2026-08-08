@@ -1,4 +1,4 @@
-TOP = counter
+TOP = alu
 
 run:
 	verilator --cc rtl/$(TOP).v \
