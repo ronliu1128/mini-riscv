@@ -1,7 +1,7 @@
 TOP = alu
 
 run:
-	verilator --cc rtl/$(TOP).v \
+	verilator --cc rtl/$(TOP).sv \
 		--exe sim/tb_$(TOP).cpp \
 		--build \
 		--trace \
