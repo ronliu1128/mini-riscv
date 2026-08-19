@@ -10,4 +10,4 @@ run:
 	./obj_dir/V$(TOP)
 
 clean:
-	rm -rf obj_dir waveform.vcd
+	rm -rf obj_dir 

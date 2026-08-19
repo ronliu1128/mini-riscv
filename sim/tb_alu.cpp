@@ -2,7 +2,7 @@
 #include <cstdint>
 
 #include "verilated.h"
-//#include "verilated_vcd_c.h"
+#include "verilated_vcd_c.h"
 #include "Valu.h"
 #include <random>
 
@@ -20,6 +20,7 @@ uint32_t reference_model(uint32_t a, uint32_t b, uint8_t op)
 
 bool check(
     Valu *top, 
+    VerilatedVcdC* tf,
     uint32_t a,
     uint32_t b,
     uint8_t op,
@@ -31,6 +32,7 @@ bool check(
     top->op = op;
     
     top->eval();
+    tf->dump(patterns);
 
     uint32_t expected = reference_model(a, b, op);
     bool expected_zero = (expected == 0);
@@ -49,24 +51,25 @@ int main(int argc, char **argv) {
     Verilated::commandArgs(argc, argv);
 
     Valu *top = new Valu;
+    Verilated::traceEverOn(true);
+    VerilatedVcdC* tf = new VerilatedVcdC;
+    top->trace(tf, 99);
+    tf->open("wave.vcd");   
 
     std::mt19937 rng(12345);
-    
+
     int patterns = 100;
     int pass_cnt = 0;
     int fail_cnt = 0;
 
-    //Verilated::traceEverOn(true);
-    //VerilatedVcdC* tf = new VerilatedVcdC;
-    //top->trace(tf, 99);
-    //tf->open("wave.vcd");   
+
 
     for (int i = 0; i < patterns; i++) {
         uint32_t a = rng();
         uint32_t b = rng();
         uint8_t op = rng() % 5;
 
-        if (check(top, a, b, op, i)) {
+        if (check(top, tf, a, b, op, i)) {
             pass_cnt++;
         } else {
             fail_cnt++;
@@ -80,6 +83,9 @@ int main(int argc, char **argv) {
     } else {
         printf("YOU failed, HAHA!\n");
     }
+
+    tf->close();
+    delete tf;
 
     delete top;
 
