@@ -42,7 +42,7 @@ bool check(
         return false;
     }
     else {
-        //printf("[PASS] a=%u, b=%u, op=%u, result=%u, expected=%u, zero=%u, expected_zero=%u\n", a, b, op, top->result, expected, top->zero, expected_zero);
+        printf("[Pattern.%d PASS]\n", patterns);
         return true;
     }
 }
@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
 
     std::mt19937 rng(12345);
 
-    int patterns = 100;
+    int patterns = 10000;
     int pass_cnt = 0;
     int fail_cnt = 0;
 

@@ -1,13 +1,22 @@
-TOP = alu
+#define variable
+TOP = regfile
+RTL_DIR = rtl
+SIM_DIR = sim
+BUILD_DIR = obj_dir
+VCD_FILE = $(TOP).vcd
+
+all: run
 
 run:
-	verilator --cc rtl/$(TOP).sv \
-		--exe sim/tb_$(TOP).cpp \
-		--build \
-		--trace \
-		--top-module $(TOP)
+	verilator -Wall --trace --cc $(RTL_DIR)/$(TOP).sv \
+		--exe $(SIM_DIR)/tb_$(TOP).cpp \
+		--top-module $(TOP) \
+		--Mdir $(BUILD_DIR) \
+		--build -j
 
-	./obj_dir/V$(TOP)
+	./$(BUILD_DIR)/V$(TOP)
 
 clean:
-	rm -rf obj_dir 
+	rm -rf $(BUILD_DIR) $(VCD_FILE)
+
+.PHONY: all run clean
