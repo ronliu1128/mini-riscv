@@ -21,10 +21,6 @@ bool check(
     uint32_t expected2
 )
 {
-    top->raddr1 = raddr1;
-    top->raddr2 = raddr2;
-    top->eval();
-
     bool pass = (top->rdata1 == expected1 && top->rdata2 == expected2);
 
     if (pass){
@@ -36,6 +32,58 @@ bool check(
     return pass;
 
     }
+
+uint32_t ref_regs[32];
+
+void ref_rst()
+{
+    for(int i = 0; i < 32; i++){
+        ref_regs[i]=0;
+    }
+}
+
+void ref_write(uint8_t addr, uint32_t data)
+{
+    if (addr != 0){
+        ref_regs[addr]=data;
+    }
+}
+
+uint32_t ref_read(uint8_t addr)
+{
+        if(addr == 0){
+            return 0;
+        }    
+            return ref_regs[addr];
+}
+
+void write(Vregfile *top, uint8_t addr, uint32_t data){
+    top->we = 1;
+    top->waddr = addr;
+    top->wdata = data;
+    clock(top);
+    ref_write(addr,data);
+    top->we = 0;
+}
+
+void no_write(Vregfile *top, uint8_t addr, uint32_t data){
+    top->we = 0;
+    top->waddr = addr;
+    top->wdata = data;
+    clock(top);
+    //ref_write(addr,data);
+}
+
+void read(Vregfile *top, uint8_t addr1, uint8_t addr2){
+
+    top->raddr1 = addr1;
+    top->raddr2 = addr2;
+    top->eval();
+    uint32_t expected1 = ref_read(addr1);
+    uint32_t expected2 = ref_read(addr2);
+    check(top, addr1, addr2, expected1, expected2);
+
+}
 
 int main(int argc, char **argv)
 {
@@ -54,62 +102,36 @@ int main(int argc, char **argv)
     //reset:
     top->rst = 1;
     top->we = 0;
+    ref_rst();
     clock(top);
-
     top->rst = 0;
     top->eval();
 
     //write x3:
-    top->we = 1;
-    top->waddr = 3;
-    top->wdata = 125;
-    clock(top); 
-
+    write(top, 3, 125);
     //read x3:
-    top->raddr1 = 3;
-    top->eval();
-    check(top, 3, 0, 125, 0);
+    printf("=== Simulation Result (ˋvˊ) ===\n");
+    read(top, 3, 0);
 
     //write x10:
-    top->we = 1;
-    top->waddr = 10;
-    top->wdata = 999;
-    clock(top); 
-
+    write(top, 10, 99);
     //read x3 & x10:
-
-    top->raddr2 = 10;
-    top->eval(); 
-    check(top, 3, 10, 125, 999);
+    read(top, 3, 10);
 
     //write x0:
-    top->we = 1;
-    top->waddr = 0;
-    top->wdata = 100;
-    clock(top); 
-
+    write(top, 0, 100);
     //read x0:   
-    top->raddr1 = 0;
-    top->eval();
-    check(top, 0, 10, 0, 999);
+    read(top, 0, 10);
     
-    //write x10 when we = 0:   
-    top->we = 0;
-    top->waddr = 10;
-    top->wdata = 888;
-    clock(top);   
-    
+    //write x10 when we = 0: 
+    no_write(top, 10, 888);
     //read x10:   
-    check(top, 0, 10, 0, 999);   
-
-    //printf("=== Simulation Result (ˋvˊ) ===\n");
-    //check(top, 0, 3, 0, 124);
+    read(top, 0, 10);   
 
     tf->close();
     delete tf;
 
     delete top;
-
     return 0;
 
 }
