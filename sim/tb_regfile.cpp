@@ -3,6 +3,7 @@
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 #include "Vregfile.h"
+#include <random>
 
 void clock(Vregfile *top)
 {
@@ -15,6 +16,7 @@ void clock(Vregfile *top)
 
 bool check(
     Vregfile *top, 
+    int pattern,
     uint8_t raddr1,
     uint8_t raddr2,
     uint32_t expected1,
@@ -22,12 +24,11 @@ bool check(
 )
 {
     bool pass = (top->rdata1 == expected1 && top->rdata2 == expected2);
-
     if (pass){
-        printf("[PASS!] x%u=%u, x%u=%u\n", top->raddr1, top->rdata1, top->raddr2, top->rdata2);
+        printf("[Pattern.%d PASS!] x%u=0x%08X, x%u=0x%08X\n", pattern, raddr1, top->rdata1, raddr2, top->rdata2);
     }
     else{
-        printf("[FAIL!] x%u=%u, expected x%u=%u, x%u=%u, expected x%u=%u\n", top->raddr1, top->rdata1, top->raddr1, expected1, top->raddr2, top->rdata2, top->raddr2, expected2);
+        printf("[Pattern.%d FAIL!] x%u=0x%08X, expected x%u=0x%08X, x%u=0x%08X, expected x%u=0x%08X\n", pattern, raddr1, top->rdata1, raddr1, expected1, raddr2, top->rdata2, raddr2, expected2);
     }
     return pass;
 
@@ -74,15 +75,18 @@ void no_write(Vregfile *top, uint8_t addr, uint32_t data){
     //ref_write(addr,data);
 }
 
-void read(Vregfile *top, uint8_t addr1, uint8_t addr2){
+bool read(Vregfile *top, int pattern, uint8_t addr1, uint8_t addr2){
 
     top->raddr1 = addr1;
     top->raddr2 = addr2;
     top->eval();
     uint32_t expected1 = ref_read(addr1);
     uint32_t expected2 = ref_read(addr2);
-    check(top, addr1, addr2, expected1, expected2);
-
+    //check(top, addr1, addr2, expected1, expected2);
+    if (check(top, pattern, addr1, addr2, expected1, expected2)) {
+        return true;
+    } 
+    return false;
 }
 
 int main(int argc, char **argv)
@@ -97,8 +101,13 @@ int main(int argc, char **argv)
     top->trace(tf, 99);
     tf->open("regfile.vcd");
 
-    //TODO:
+    std::mt19937 rng(1);
+    int patterns = 50000;
+    int pass_cnt = 0;
+    int fail_cnt = 0;
 
+    //TODO:
+    for (int i = 0; i < patterns; i++) {
     //reset:
     top->rst = 1;
     top->we = 0;
@@ -107,27 +116,59 @@ int main(int argc, char **argv)
     top->rst = 0;
     top->eval();
 
-    //write x3:
-    write(top, 3, 125);
-    //read x3:
-    printf("=== Simulation Result (ˋvˊ) ===\n");
-    read(top, 3, 0);
+    //write:
+    uint8_t test_add1 = rng() % 32;
+    uint32_t test_data1 = static_cast<uint32_t>(rng());
+    uint8_t test_add2 = rng() % 32;
+    uint32_t test_data2 = static_cast<uint32_t>(rng());      
+    write(top, test_add1, test_data1);
+    write(top, test_add2, test_data2);
+    //read:
+    //read(top, test_add1, test_add2);
+    if (read(top, i, test_add1, test_add2)) {
+        pass_cnt++;
+    } else {
+        fail_cnt++;
+    }
 
-    //write x10:
-    write(top, 10, 99);
-    //read x3 & x10:
-    read(top, 3, 10);
+    //write:
+    test_data1 = static_cast<uint32_t>(rng());
+    write(top, test_add1, test_data1);
+    //read:
+    if (read(top, i, test_add1, test_add2)) {
+        pass_cnt++;
+    } else {
+        fail_cnt++;
+    }
 
-    //write x0:
-    write(top, 0, 100);
-    //read x0:   
-    read(top, 0, 10);
+    //write:
+    test_data1 = static_cast<uint32_t>(rng());    
+    write(top, 0, test_data1);
+    //read:   
+    if (read(top, i, 0, test_add2)) {
+        pass_cnt++;
+    } else {
+        fail_cnt++;
+    }
     
-    //write x10 when we = 0: 
-    no_write(top, 10, 888);
-    //read x10:   
-    read(top, 0, 10);   
+    //write when we = 0: 
+    test_data2 = static_cast<uint32_t>(rng());  
+    no_write(top, test_add2, test_data2);
+    //read:   
+    if (read(top, i, test_add1, test_add2)) {
+        pass_cnt++;
+    } else {
+        fail_cnt++;
+    }   
+    }
 
+    printf("=== Simulation Result (ˋvˊ) ===\n Total Tests: %d\n Passed: %d\n Failed: %d\n", patterns, pass_cnt, fail_cnt);
+    if (fail_cnt == 0) {
+        printf("All tests passed!\n");
+    } else {
+        printf("YOU failed, HAHA!\n");
+    }
+    
     tf->close();
     delete tf;
 
